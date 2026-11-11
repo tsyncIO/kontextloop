@@ -1,12 +1,14 @@
-"""Ollama HTTP client and prompt builder for KontextLoop."""
+"""Ollama HTTP client and full-spectrum real-world scenario generator for KontextLoop."""
 
 from __future__ import annotations
 
 import os
+import random
 import re
 import shutil
 import subprocess
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -14,14 +16,37 @@ import httpx
 DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 DEFAULT_OLLAMA_URL = f"{DEFAULT_OLLAMA_BASE}/api/generate"
 DEFAULT_MODEL = "llama3.1:8b"
-REQUEST_TIMEOUT = 30.0
+REQUEST_TIMEOUT = 120.0
 
 # Tracks subprocess if spawned by this session
 _SPAWNED_OLLAMA_PROC: subprocess.Popen[Any] | None = None
 
+# Full-spectrum domains spanning the complete reality of human interaction
+SPECTRUM_DOMAINS = [
+    "Industrial Engineering, Heavy Trades & Infrastructure Logistics",
+    "Empirical Sciences, Field Research & Technical Discovery",
+    "High-Stakes Law, Civic Governance & Investigative Inquiries",
+    "Medicine, Clinical Triage & Emergency Response",
+    "Artistic Direction, Acoustic Engineering, Literature & Design",
+    "Deep Interpersonal Realism, Family Heritage & Psychological Dynamics",
+    "Subcultures, Urban Street Realism & Community Micro-Economies",
+    "Agriculture, Environmental Ecology & Wilderness Management",
+    "Academic Debates, Philosophy, Ethics & Archival Preservation",
+    "Maritime Navigation, Aviation Dispatch & Long-Haul Transport",
+]
+
 
 class OllamaError(Exception):
     """Custom exception for Ollama communication errors with user-friendly messages."""
+
+
+@dataclass
+class ScenarioDialogue:
+    """Represents a rich, full-spectrum dialogue scenario and its translation."""
+    domain: str
+    theme: str
+    german_paragraphs: list[tuple[str, str]] = field(default_factory=list)  # (Speaker, Text)
+    english_paragraphs: list[tuple[str, str]] = field(default_factory=list)  # (Speaker, Text)
 
 
 def is_ollama_running(base_url: str = DEFAULT_OLLAMA_BASE) -> bool:
@@ -48,7 +73,6 @@ def ensure_ollama_running(base_url: str = DEFAULT_OLLAMA_BASE) -> bool:
             "Please install Ollama first from https://ollama.com or your package manager."
         )
 
-    # Start Ollama serve in background
     try:
         _SPAWNED_OLLAMA_PROC = subprocess.Popen(
             [ollama_path, "serve"],
@@ -59,7 +83,6 @@ def ensure_ollama_running(base_url: str = DEFAULT_OLLAMA_BASE) -> bool:
     except Exception as e:
         raise OllamaError(f"Failed to automatically start 'ollama serve': {e}")
 
-    # Wait up to 8 seconds for server to respond
     start_time = time.time()
     while time.time() - start_time < 8.0:
         if is_ollama_running(base_url):
@@ -75,68 +98,108 @@ def ensure_ollama_running(base_url: str = DEFAULT_OLLAMA_BASE) -> bool:
     return True
 
 
-def build_prompt(german: str, english: str, pos: str) -> str:
-    """Build the prompt for Ollama according to Section 7 of spec.txt."""
-    return f"""You are a German language tutor helping a learner understand vocabulary in context.
-
-Target word: {german} (English: {english}, Part of speech: {pos})
-
-Generate exactly 7 short, natural German sentences from everyday life in Germany where this word is used in a different context each time. Keep each sentence under 15 words. Use simple A1–B1 vocabulary for surrounding words.
-
-After each German sentence, write its English translation on the next line, prefixed with "EN: ".
-
-Format:
-1. [German sentence]
-EN: [English translation]
-2. [German sentence]
-EN: [English translation]
-...
-
-Do not add any other text before or after."""
-
-
-def parse_llm_response(text: str) -> list[tuple[str, str]]:
-    """Parse the LLM numbered sentences and EN: translations into pairs.
+def build_scenario_prompt(german: str, english: str, pos: str) -> tuple[str, str]:
+    """Build a prompt dynamically steered by a full-spectrum domain category.
     
     Returns:
-        list of (german_sentence, english_translation)
+        tuple[prompt, selected_domain]
     """
-    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
-    results: list[tuple[str, str]] = []
+    selected_domain = random.choice(SPECTRUM_DOMAINS)
 
-    current_german: str | None = None
+    prompt = f"""You are a master storyteller and linguistic dramatist crafting realistic dialogues across the entire spectrum of human experience.
+
+Domain focus: {selected_domain}
+Target word: {german} (English meaning: {english}, Part of speech: {pos})
+
+TASK:
+Write an authentic, highly detailed 2-person German conversation situated squarely within this domain. Avoid clichéd beginner language textbook tropes. Instead, capture the exact texture of real human conversation in this world — specific jargon, natural colloquial cadence, conflicting viewpoints, unsaid subtext, and genuine emotional or intellectual weight.
+
+REQUIREMENTS:
+1. THEME: Write a 1-sentence description of the specific scenario, the two characters, and what is at stake.
+2. CONVERSATION: A substantive back-and-forth dialogue between the 2 characters (at least 8 distinct conversational turns).
+   - Naturally weave the target word '{german}' (or its correct conjugated/inflected German forms) into the dialogue across multiple turns (at least 3 times).
+   - Each turn should be a natural, rich conversational paragraph, not just one brief sentence.
+3. TRANSLATION: A complete, faithful English translation of the entire dialogue with the exact same speaker names.
+
+FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
+THEME: <1-sentence specific scenario and characters>
+
+GERMAN CONVERSATION:
+Speaker1: <German dialogue turn>
+Speaker2: <German dialogue turn>
+...
+
+ENGLISH TRANSLATION:
+Speaker1: <English translation>
+Speaker2: <English translation>
+...
+
+Do not output any introductory or concluding meta-commentary."""
+
+    return prompt, selected_domain
+
+
+def parse_scenario_response(text: str, domain: str) -> ScenarioDialogue:
+    """Parse the raw LLM output into theme, German dialogue paragraphs, and English translations."""
+    theme = f"Real-World Context ({domain})"
+    german_paragraphs: list[tuple[str, str]] = []
+    english_paragraphs: list[tuple[str, str]] = []
+
+    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+    current_section = "preamble"
 
     for line in lines:
-        # Check if line starts with EN: translation prefix
-        if line.lower().startswith("en:") or line.lower().startswith("en :"):
-            en_text = re.sub(r"^en\s*:\s*", "", line, flags=re.IGNORECASE).strip()
-            if current_german:
-                results.append((current_german, en_text))
-                current_german = None
+        upper = line.upper()
+        if upper.startswith("THEME:"):
+            theme = line.split(":", 1)[1].strip()
+            continue
+        elif "GERMAN CONVERSATION:" in upper or "GERMAN DIALOGUE:" in upper:
+            current_section = "german"
+            continue
+        elif "ENGLISH TRANSLATION:" in upper or "ENGLISH:" in upper:
+            current_section = "english"
+            continue
+
+        if ":" in line:
+            parts = line.split(":", 1)
+            speaker = parts[0].strip().replace("*", "")
+            content = parts[1].strip()
+            if speaker and content:
+                if current_section == "german":
+                    german_paragraphs.append((speaker, content))
+                elif current_section == "english":
+                    english_paragraphs.append((speaker, content))
         else:
-            # Check for numbered sentence like "1. Ich...", "1) Ich...", or unnumbered sentence
-            cleaned = re.sub(r"^\d+[\.\)]\s*", "", line).strip()
-            if cleaned:
-                if current_german and not results:
-                    # Previous German sentence had no EN translation yet
-                    pass
-                current_german = cleaned
+            if current_section == "german" and german_paragraphs:
+                prev_spk, prev_txt = german_paragraphs[-1]
+                german_paragraphs[-1] = (prev_spk, f"{prev_txt} {line}")
+            elif current_section == "english" and english_paragraphs:
+                prev_spk, prev_txt = english_paragraphs[-1]
+                english_paragraphs[-1] = (prev_spk, f"{prev_txt} {line}")
 
-    return results
+    if not german_paragraphs and lines:
+        for line in lines:
+            if ":" in line:
+                spk, txt = line.split(":", 1)
+                german_paragraphs.append((spk.strip(), txt.strip()))
+
+    return ScenarioDialogue(
+        domain=domain,
+        theme=theme,
+        german_paragraphs=german_paragraphs,
+        english_paragraphs=english_paragraphs,
+    )
 
 
-def generate_sentences(
+def generate_scenario(
     german: str,
     english: str,
     pos: str,
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_OLLAMA_URL,
-) -> list[tuple[str, str]]:
-    """Call Ollama local LLM to generate context sentences.
-    
-    Fails gracefully with OllamaError if Ollama is unreachable or times out.
-    """
-    prompt = build_prompt(german, english, pos)
+) -> ScenarioDialogue:
+    """Call Ollama local LLM to synthesize a full-spectrum dialogue scenario."""
+    prompt, domain = build_scenario_prompt(german, english, pos)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -155,21 +218,20 @@ def generate_sentences(
             response.raise_for_status()
             data = response.json()
             raw_response = data.get("response", "")
-            parsed = parse_llm_response(raw_response)
-            if not parsed:
-                raise OllamaError("Failed to parse sentences from LLM response. Please try again.")
+            parsed = parse_scenario_response(raw_response, domain)
+            if not parsed.german_paragraphs:
+                raise OllamaError("Failed to parse scenario dialogue from LLM response. Please try again.")
             return parsed
 
     except httpx.ConnectError:
         raise OllamaError(
             "Ollama is not running or unreachable at http://localhost:11434.\n"
-            "Please start Ollama in a separate terminal with:\n\n"
-            "  ollama serve\n"
+            "Please start Ollama with 'ollama serve'."
         )
     except httpx.TimeoutException:
         raise OllamaError(
             f"Ollama request timed out after {int(REQUEST_TIMEOUT)}s.\n"
-            "The model may be loading or your system is under heavy load. Please try again."
+            "Generating a deep multi-paragraph scenario takes time. Please try again or use a faster model."
         )
     except httpx.HTTPStatusError as e:
         raise OllamaError(f"Ollama HTTP error ({e.response.status_code}): {e.response.text}")
@@ -195,7 +257,6 @@ def unload_model(model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL)
     except Exception:
         pass
 
-    # If kloop started the server, shut it down on exit
     if _SPAWNED_OLLAMA_PROC is not None:
         try:
             _SPAWNED_OLLAMA_PROC.terminate()
@@ -207,5 +268,3 @@ def unload_model(model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL)
                 pass
         finally:
             _SPAWNED_OLLAMA_PROC = None
-
-
