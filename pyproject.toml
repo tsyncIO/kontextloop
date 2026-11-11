@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-vokabel = "main:main"
+kloop = "src.main:main"
 
 [build-system]
 requires = ["hatchling"]

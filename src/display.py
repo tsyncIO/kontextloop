@@ -107,7 +107,7 @@ def display_session_summary(words_seen: int, elapsed_seconds: float) -> None:
 def display_vocab_table(entries: list[dict[str, Any]]) -> None:
     """Display stored vocabulary entries in a formatted Rich table."""
     if not entries:
-        console.print("[dim]No vocabulary stored yet. Add pairs using 'vokabel add <file.txt>'[/dim]")
+        console.print("[dim]No vocabulary stored yet. Add pairs using 'kloop add <file.txt>'[/dim]")
         return
 
     table = Table(
