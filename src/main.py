@@ -13,14 +13,14 @@ from src.display import (
     display_error,
     display_info,
     display_navigation_prompt,
-    display_sentences,
+    display_scenario_dialogue,
     display_session_summary,
     display_success,
     display_vocab_table,
     display_word_header,
 )
 from src.ingestion import parse_vocab_file
-from src.llm import DEFAULT_MODEL, OllamaError, ensure_ollama_running, generate_sentences, unload_model
+from src.llm import DEFAULT_MODEL, OllamaError, ensure_ollama_running, generate_scenario, unload_model
 from src.storage import add_vocab_entries, load_vocab, reset_vocab, save_vocab
 
 
@@ -92,15 +92,15 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
             meta = entry.get("metadata", {})
             pos = meta.get("partOfSpeech", "word")
 
-            with console.status(f"[bold cyan]Generating context for '{german}'...[/bold cyan]"):
+            with console.status(f"[bold cyan]Synthesizing full-spectrum scenario for '{german}'...[/bold cyan]"):
                 try:
-                    sentences = generate_sentences(german, english, pos, model=model)
+                    scenario = generate_scenario(german, english, pos, model=model)
                 except OllamaError as err:
                     display_error(str(err))
                     return
 
             display_word_header(german, english)
-            display_sentences(sentences, german)
+            display_scenario_dialogue(scenario, german)
 
             # Update word metadata
             now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
