@@ -6,13 +6,15 @@ KontextLoop (`kloop`) is an offline Python terminal application designed for con
 
 ---
 
-## Features
+## Highlights
 
-- **Context-First Learning:** Generates 6–8 natural everyday German sentences for each target word.
+- **Context-First Learning:** Synthesizes 6–8 natural everyday German sentences for each target word across realistic contexts.
 - **Rich Terminal UI:** Visual header panels, case-insensitive bold yellow target word highlighting, and dim/gray English sentence translations.
-- **Local & Offline:** Communicates with a local Ollama instance (`llama3.1:8b` by default, or `qwen2.5:3b`). Zero cloud API keys or external dependencies required.
-- **Smart Grammar Ingestion:** Automatically detects articles (`der`, `die`, `das`) for noun capitalization, infinitive verbs (`zu`), and flexible delimiters (`-`, `=`, `;`).
-- **Graceful Error Handling:** Provides helpful guidance instead of raw tracebacks if Ollama is unreachable.
+- **Embedded Lifecycle Management:**
+  - **Auto-Serve:** Automatically detects and launches `ollama serve` in the background if it is not already running.
+  - **Zero RAM Leak:** Automatically unloads the model from RAM/VRAM immediately upon session completion (`keep_alive: 0`).
+- **Smart Grammar Ingestion:** Automatically recognizes articles (`der`, `die`, `das`) for noun capitalization, infinitive verbs (`zu`), and flexible delimiters (`-`, `=`, `;`).
+- **Fully Offline:** Works directly with your local Ollama runtime (`llama3.1:8b` by default, or `qwen2.5:3b`). Zero cloud API keys or external services required.
 
 ---
 
@@ -26,6 +28,8 @@ KontextLoop (`kloop`) is an offline Python terminal application designed for con
 
 ### 2. Pull a Model
 
+Pull your preferred model (one-time download):
+
 ```bash
 # Recommended default model
 ollama pull llama3.1:8b
@@ -34,14 +38,12 @@ ollama pull llama3.1:8b
 ollama pull qwen2.5:3b
 ```
 
-Ensure the Ollama server is running:
-```bash
-ollama serve
-```
+*(Note: You do not need to manually run `ollama serve` — `kloop` starts it automatically if needed!)*
 
-### 3. Add Vocabulary
+### 3. Ingest Vocabulary
 
-Prepare a text file (`vocab.txt`) with German-English pairs:
+Create a text file (`vocab.txt`) with German–English word pairs using flexible delimiters (`-`, `=`, `;`):
+
 ```text
 behalten - to keep / to retain
 der Apfel = the apple
@@ -49,24 +51,25 @@ die Wohnung; the apartment
 zu verstehen - to understand
 ```
 
-Ingest into storage:
+Import it into storage:
+
 ```bash
 uv run kloop add vocab.txt
 ```
 
-### 4. Start a Learning Session
+### 4. Run an Interactive Session
 
 ```bash
 # Start a default session (10 words with llama3.1:8b)
 uv run kloop session
 
-# Custom session length or model
+# Custom session length or custom model
 uv run kloop session --words 5 --model qwen2.5:3b
 ```
 
-In the session:
+During the session:
 - Press **`Enter`** to advance to the next word.
-- Press **`q`** to end the session early and view the session summary.
+- Press **`q`** to quit anytime and view your session summary.
 
 ---
 
@@ -75,6 +78,25 @@ In the session:
 | Command | Description |
 |---|---|
 | `uv run kloop add <file.txt>` | Ingest German–English vocabulary pairs from a file |
-| `uv run kloop session [--words N] [--model MODEL]` | Start an interactive context session |
-| `uv run kloop list` | Display all stored vocabulary in a formatted table |
-| `uv run kloop reset` | Clear all stored vocabulary |
+| `uv run kloop session [--words N] [--model MODEL]` | Start an interactive contextual learning session |
+| `uv run kloop list` | Display all stored vocabulary in a formatted Rich table |
+| `uv run kloop reset` | Clear all stored vocabulary from storage |
+
+---
+
+## Architecture & Layout
+
+```
+kontextloop/
+├── pyproject.toml        # UV project configuration and kloop CLI entrypoint
+├── README.md             # Project documentation
+├── spec.txt              # Specification
+├── vocab.txt             # Sample vocabulary
+└── src/
+    ├── __init__.py       # Package marker
+    ├── main.py           # CLI routing and session lifecycle controller
+    ├── ingestion.py      # Delimiter parsing and grammar normalization
+    ├── storage.py        # ~/.kontextloop/vocab.json persistence layer
+    ├── llm.py            # Ollama client, auto-serve, and model unload manager
+    └── display.py        # Rich terminal panels, tables, and sentence highlighting
+```
