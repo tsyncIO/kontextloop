@@ -2,19 +2,28 @@
 
 > A context-driven synthesis engine and terminal runtime for accelerated immersive learning.
 
-KontextLoop (`kloop`) is an offline Python terminal application designed for contextual German vocabulary acquisition. It pairs local LLM generation (via Ollama) with a rich terminal interface to present target words in diverse, realistic everyday sentences with highlighting and English translations.
+KontextLoop (`kloop`) is an offline Python terminal application designed for contextual German language acquisition. Instead of dry flashcards or generic textbook exercises, KontextLoop pairs a local LLM runtime (via Ollama) with a Rich terminal interface to immerse learners in **substantive, full-spectrum 2-person dialogues** across diverse real-world domains.
 
 ---
 
 ## Highlights
 
-- **Context-First Learning:** Synthesizes 6–8 natural everyday German sentences for each target word across realistic contexts.
-- **Rich Terminal UI:** Visual header panels, case-insensitive bold yellow target word highlighting, and dim/gray English sentence translations.
+- **Full-Spectrum Real-World Scenarios:**
+  - Moves far beyond cliché textbook tropes (*"im Supermarkt"*, *"am Bahnhof"*).
+  - Dynamically steers dialogues across an expansive spectrum of human reality: heavy trades & industrial logistics, clinical emergency medicine, investigative legal disputes, deep-sea & empirical research, acoustic engineering, intimate family dynamics, archival preservation, and urban subcultures.
+- **Extended Thematic Dialogues:**
+  - Synthesizes an authentic 8-to-12 turn conversation between two individuals with differing perspectives and natural conversational subtext.
+  - Naturally embeds the target word and its German inflected forms multiple times throughout the dialogue turns.
+- **Rich Terminal UI:**
+  - High-visibility word header panel in cyan.
+  - Distinct speaker badges with individual color palettes.
+  - Case-insensitive target word occurrences highlighted in **bold yellow**.
+  - Complete, nuanced English translations displayed in **dim/gray** below the German conversation.
 - **Embedded Lifecycle Management:**
-  - **Auto-Serve:** Automatically detects and launches `ollama serve` in the background if it is not already running.
-  - **Zero RAM Leak:** Automatically unloads the model from RAM/VRAM immediately upon session completion (`keep_alive: 0`).
+  - **Auto-Serve:** Automatically launches `ollama serve` in the background if the service is not currently running.
+  - **Zero RAM Leak:** Immediately unloads the model from memory upon session exit (`keep_alive: 0`) to free 100% of RAM/VRAM.
 - **Smart Grammar Ingestion:** Automatically recognizes articles (`der`, `die`, `das`) for noun capitalization, infinitive verbs (`zu`), and flexible delimiters (`-`, `=`, `;`).
-- **Fully Offline:** Works directly with your local Ollama runtime (`llama3.1:8b` by default, or `qwen2.5:3b`). Zero cloud API keys or external services required.
+- **Fully Offline:** Runs locally via Ollama (`llama3.1:8b` by default, or `qwen2.5:3b`). Zero cloud API keys or external services required.
 
 ---
 
@@ -31,7 +40,7 @@ KontextLoop (`kloop`) is an offline Python terminal application designed for con
 Pull your preferred model (one-time download):
 
 ```bash
-# Recommended default model
+# Recommended default model (best German nuance & coherence)
 ollama pull llama3.1:8b
 
 # Or lightweight model (for machines with <4 GB RAM)
@@ -54,21 +63,21 @@ zu verstehen - to understand
 Import it into storage:
 
 ```bash
-uv run kloop add vocab.txt
+UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop add vocab.txt
 ```
 
-### 4. Run an Interactive Session
+### 4. Run an Interactive Learning Session
 
 ```bash
 # Start a default session (10 words with llama3.1:8b)
-uv run kloop session
+UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session
 
 # Custom session length or custom model
-uv run kloop session --words 5 --model qwen2.5:3b
+UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session --words 5 --model qwen2.5:3b
 ```
 
 During the session:
-- Press **`Enter`** to advance to the next word.
+- Press **`Enter`** to advance to the next word scenario.
 - Press **`q`** to quit anytime and view your session summary.
 
 ---
@@ -89,7 +98,8 @@ During the session:
 ```
 kontextloop/
 ├── pyproject.toml        # UV project configuration and kloop CLI entrypoint
-├── README.md             # Project documentation
+├── uv.lock               # Pinned dependencies lockfile
+├── README.md             # Project documentation & usage guide
 ├── spec.txt              # Specification
 ├── vocab.txt             # Sample vocabulary
 └── src/
@@ -97,6 +107,6 @@ kontextloop/
     ├── main.py           # CLI routing and session lifecycle controller
     ├── ingestion.py      # Delimiter parsing and grammar normalization
     ├── storage.py        # ~/.kontextloop/vocab.json persistence layer
-    ├── llm.py            # Ollama client, auto-serve, and model unload manager
-    └── display.py        # Rich terminal panels, tables, and sentence highlighting
+    ├── llm.py            # Full-spectrum prompt engine, Ollama client, auto-serve, and unload manager
+    └── display.py        # Rich terminal panels, tables, speaker styling, and word highlighting
 ```
