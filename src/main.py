@@ -20,7 +20,7 @@ from src.display import (
     display_word_header,
 )
 from src.ingestion import parse_vocab_file
-from src.llm import DEFAULT_MODEL, OllamaError, generate_sentences, unload_model
+from src.llm import DEFAULT_MODEL, OllamaError, ensure_ollama_running, generate_sentences, unload_model
 from src.storage import add_vocab_entries, load_vocab, reset_vocab, save_vocab
 
 
@@ -74,6 +74,14 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
     session_words = random.sample(all_vocab, sample_size)
 
     display_info(f"Starting session with {sample_size} words using model '{model}'...")
+    
+    # Ensure Ollama service is running, auto-spawning it if needed
+    try:
+        ensure_ollama_running()
+    except OllamaError as err:
+        display_error(str(err))
+        return
+
     start_time = time.time()
     words_seen = 0
 
