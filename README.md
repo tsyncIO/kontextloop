@@ -2,12 +2,18 @@
 
 > A context-driven synthesis engine and terminal runtime for accelerated immersive learning.
 
-KontextLoop (`kloop`) is an offline Python terminal application designed for contextual German language acquisition. Instead of dry flashcards or generic textbook exercises, KontextLoop pairs a local LLM runtime (via Ollama) with a Rich terminal interface to immerse learners in **substantive, full-spectrum 2-person dialogues** across diverse real-world domains.
+KontextLoop (`kloop`) is an offline Python terminal application designed for contextual German language acquisition. Instead of dry flashcards or generic textbook exercises, KontextLoop pairs a local LLM runtime (via Ollama) with a Rich terminal interface to immerse learners in **substantive, full-spectrum 2-person dialogues** across diverse real-world domains with **CEFR-calibrated synonym difficulty progression (A1 to C2)**.
 
 ---
 
 ## Highlights
 
+- **CEFR Difficulty Progression (A1 to C2):**
+  - **Normalized Sentence Length:** Conversational pacing and sentence lengths remain consistent, while vocabulary density, synonym sophistication, and registers adapt strictly to your chosen level.
+  - **Level-Adapted Synonyms:**
+    - **A1/A2:** Concrete high-frequency foundational vocabulary (*machen, gut, aufpassen, helfen*).
+    - **B1/B2:** Nuanced professional and idiomatic synonyms (*beibehalten, gewährleisten, plädieren, gravierend, konstatieren*).
+    - **C1/C2:** Formal, academic, and literary mastery (*konservieren, wahren, perpetuieren, unumgänglich, tangieren*).
 - **Full-Spectrum Real-World Scenarios:**
   - Moves far beyond cliché textbook tropes (*"im Supermarkt"*, *"am Bahnhof"*).
   - Dynamically steers dialogues across an expansive spectrum of human reality: heavy trades & industrial logistics, clinical emergency medicine, investigative legal disputes, deep-sea & empirical research, acoustic engineering, intimate family dynamics, archival preservation, and urban subcultures.
@@ -69,11 +75,14 @@ UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop add vocab.txt
 ### 4. Run an Interactive Learning Session
 
 ```bash
-# Start a default session (10 words with llama3.1:8b)
+# Start a default session (10 words with llama3.1:8b at B1 level)
 UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session
 
-# Custom session length or custom model
-UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session --words 5 --model qwen2.5:3b
+# Choose your CEFR difficulty level (A1, A2, B1, B2, C1, C2)
+UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session --level B2
+
+# Custom session length, level, or model
+UV_PROJECT_ENVIRONMENT=/tmp/kontextloop-venv uv run kloop session --words 5 --level C1 --model llama3.1:8b
 ```
 
 During the session:
@@ -87,7 +96,7 @@ During the session:
 | Command | Description |
 |---|---|
 | `uv run kloop add <file.txt>` | Ingest German–English vocabulary pairs from a file |
-| `uv run kloop session [--words N] [--model MODEL]` | Start an interactive contextual learning session |
+| `uv run kloop session [--words N] [--level LEVEL] [--model MODEL]` | Start an interactive contextual learning session (`--level` accepts `A1` to `C2`, default `B1`) |
 | `uv run kloop list` | Display all stored vocabulary in a formatted Rich table |
 | `uv run kloop reset` | Clear all stored vocabulary from storage |
 
@@ -107,6 +116,6 @@ kontextloop/
     ├── main.py           # CLI routing and session lifecycle controller
     ├── ingestion.py      # Delimiter parsing and grammar normalization
     ├── storage.py        # ~/.kontextloop/vocab.json persistence layer
-    ├── llm.py            # Full-spectrum prompt engine, Ollama client, auto-serve, and unload manager
-    └── display.py        # Rich terminal panels, tables, speaker styling, and word highlighting
+    ├── llm.py            # CEFR synonym engine, full-spectrum prompt generator, Ollama client, auto-serve, and unload manager
+    └── display.py        # Rich terminal panels, tables, CEFR badges, speaker styling, and word highlighting
 ```

@@ -75,11 +75,17 @@ def display_word_header(german: str, english: str) -> None:
 
 
 def display_scenario_dialogue(scenario: ScenarioDialogue, target_word: str) -> None:
-    """Display the full-spectrum documentary scenario dialogue with highlighted word and English translation."""
+    """Display the full-spectrum scenario dialogue with CEFR badge, highlighted word and English translation."""
     # 1. Thematic Scenario Banner
     scenario_info = Text()
     scenario_info.append("Domain: ", style="bold magenta")
-    scenario_info.append(f"{scenario.domain}\n", style="white")
+    scenario_info.append(f"{scenario.domain}  ", style="white")
+    
+    # CEFR Level badge styling
+    level_colors = {"A1": "green", "A2": "green", "B1": "yellow", "B2": "bright_yellow", "C1": "cyan", "C2": "bold magenta"}
+    lvl_color = level_colors.get(scenario.level.upper(), "yellow")
+    scenario_info.append(f"[{scenario.level.upper()}]\n", style=f"bold {lvl_color}")
+    
     scenario_info.append("Scenario: ", style="bold cyan")
     scenario_info.append(f"{scenario.theme}", style="italic white")
 

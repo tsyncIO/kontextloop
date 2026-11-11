@@ -63,8 +63,8 @@ def handle_reset() -> None:
     display_success("All stored vocabulary has been cleared.")
 
 
-def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
-    """Handle 'kloop session [--words N] [--model MODEL]' command."""
+def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL, level: str = "B1") -> None:
+    """Handle 'kloop session [--words N] [--model MODEL] [--level LEVEL]' command."""
     all_vocab = load_vocab()
     if not all_vocab:
         display_error("No vocabulary stored yet. Add pairs first using:\n\n  kloop add <vocab.txt>\n")
@@ -73,7 +73,7 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
     sample_size = min(words_count, len(all_vocab))
     session_words = random.sample(all_vocab, sample_size)
 
-    display_info(f"Starting session with {sample_size} words using model '{model}'...")
+    display_info(f"Starting session with {sample_size} words [Level: {level.upper()}] using model '{model}'...")
     
     # Ensure Ollama service is running, auto-spawning it if needed
     try:
@@ -92,9 +92,9 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
             meta = entry.get("metadata", {})
             pos = meta.get("partOfSpeech", "word")
 
-            with console.status(f"[bold cyan]Synthesizing full-spectrum scenario for '{german}'...[/bold cyan]"):
+            with console.status(f"[bold cyan]Synthesizing {level.upper()} scenario for '{german}'...[/bold cyan]"):
                 try:
-                    scenario = generate_scenario(german, english, pos, model=model)
+                    scenario = generate_scenario(german, english, pos, level=level, model=model)
                 except OllamaError as err:
                     display_error(str(err))
                     return
@@ -146,13 +146,20 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser = subparsers.add_parser("add", help="Ingest vocab pairs from a plain text file")
     add_parser.add_argument("file", help="Path to vocabulary file (.txt)")
 
-    # kloop session [--words N] [--model MODEL]
+    # kloop session [--words N] [--model MODEL] [--level LEVEL]
     session_parser = subparsers.add_parser("session", help="Start an interactive learning session")
     session_parser.add_argument(
         "--words",
         type=int,
         default=10,
         help="Number of words in this session (default: 10)",
+    )
+    session_parser.add_argument(
+        "--level",
+        type=str,
+        default="B1",
+        choices=["A1", "A2", "B1", "B2", "C1", "C2", "a1", "a2", "b1", "b2", "c1", "c2"],
+        help="CEFR difficulty synonym level: A1 to C2 (default: B1)",
     )
     session_parser.add_argument(
         "--model",
@@ -178,7 +185,7 @@ def main() -> None:
     if args.command == "add":
         handle_add(args.file)
     elif args.command == "session":
-        handle_session(words_count=args.words, model=args.model)
+        handle_session(words_count=args.words, model=args.model, level=args.level)
     elif args.command == "list":
         handle_list()
     elif args.command == "reset":

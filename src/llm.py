@@ -1,4 +1,4 @@
-"""Ollama HTTP client and full-spectrum real-world scenario generator for KontextLoop."""
+"""Ollama HTTP client and full-spectrum CEFR-adapted scenario generator for KontextLoop."""
 
 from __future__ import annotations
 
@@ -35,6 +35,57 @@ SPECTRUM_DOMAINS = [
     "Maritime Navigation, Aviation Dispatch & Long-Haul Transport",
 ]
 
+# CEFR synonym tiers: sentence length and conversational pacing stay constant,
+# but lexical density, synonym sophistication, and register adapt strictly to the level.
+CEFR_SYNONYM_PROFILES: dict[str, dict[str, str]] = {
+    "A1": {
+        "register": "Elementary & Direct",
+        "synonym_rule": (
+            "Use only the most basic, high-frequency German everyday words (A1 tier). "
+            "Use simple core synonyms (e.g., 'gut', 'schlecht', 'machen', 'sagen', 'wichtig', 'brauchen'). "
+            "Keep sentence lengths balanced and clear without abstract jargon."
+        ),
+    },
+    "A2": {
+        "register": "Routine Practical",
+        "synonym_rule": (
+            "Use common everyday practical synonyms (A2 tier) like 'aufpassen', 'notwendig', 'erklären', 'helfen'. "
+            "Maintain the same conversational length but avoid specialized academic or literary terms."
+        ),
+    },
+    "B1": {
+        "register": "Conversational Intermediate",
+        "synonym_rule": (
+            "Use standard versatile intermediate synonyms (B1 tier) like 'aufbewahren', 'unterstützen', 'wesentlich', 'sich verhalten', 'begründen'. "
+            "Natural, expressive colloquial German with realistic pacing."
+        ),
+    },
+    "B2": {
+        "register": "Advanced Nuanced & Professional",
+        "synonym_rule": (
+            "Elevate the vocabulary using advanced professional and idiomatic synonyms (B2 tier) "
+            "like 'beibehalten', 'gewährleisten', 'plädieren', 'gravierend', 'berücksichtigen', 'konstatieren'. "
+            "Retain the exact conversational sentence length, but replace generic terms with precise, sophisticated synonyms."
+        ),
+    },
+    "C1": {
+        "register": "Elevated Academic & Idiomatic",
+        "synonym_rule": (
+            "Use formal, highly distinguished, and specialized synonyms (C1 tier) "
+            "like 'konservieren', 'wahren', 'unumgänglich', 'tangieren', 'insinuieren', 'revidieren'. "
+            "Keep the dialogue turns normalized to the same length, but maximize lexical density and domain precision."
+        ),
+    },
+    "C2": {
+        "register": "Literary & Rhetorical Mastery",
+        "synonym_rule": (
+            "Employ literary, philosophically precise, and rare German synonyms (C2 tier) "
+            "such as 'perpetuieren', 'obliegen', 'diffizil', 'manifestieren', 'unstrittig', 'immanent'. "
+            "Keep sentence rhythm and length normalized, while achieving absolute native eloquence and stylistic elegance."
+        ),
+    },
+}
+
 
 class OllamaError(Exception):
     """Custom exception for Ollama communication errors with user-friendly messages."""
@@ -45,6 +96,7 @@ class ScenarioDialogue:
     """Represents a rich, full-spectrum dialogue scenario and its translation."""
     domain: str
     theme: str
+    level: str
     german_paragraphs: list[tuple[str, str]] = field(default_factory=list)  # (Speaker, Text)
     english_paragraphs: list[tuple[str, str]] = field(default_factory=list)  # (Speaker, Text)
 
@@ -98,27 +150,34 @@ def ensure_ollama_running(base_url: str = DEFAULT_OLLAMA_BASE) -> bool:
     return True
 
 
-def build_scenario_prompt(german: str, english: str, pos: str) -> tuple[str, str]:
-    """Build a prompt dynamically steered by a full-spectrum domain category.
+def build_scenario_prompt(german: str, english: str, pos: str, level: str = "B1") -> tuple[str, str]:
+    """Build a prompt dynamically steered by a full-spectrum domain category and normalized CEFR synonym level.
     
     Returns:
         tuple[prompt, selected_domain]
     """
     selected_domain = random.choice(SPECTRUM_DOMAINS)
+    norm_level = level.upper() if level.upper() in CEFR_SYNONYM_PROFILES else "B1"
+    profile = CEFR_SYNONYM_PROFILES[norm_level]
 
-    prompt = f"""You are a master storyteller and linguistic dramatist crafting realistic dialogues across the entire spectrum of human experience.
+    prompt = f"""You are a master German linguistic stylist and dramatist creating realistic dialogues across human reality.
 
 Domain focus: {selected_domain}
 Target word: {german} (English meaning: {english}, Part of speech: {pos})
+Target CEFR Difficulty Level: {norm_level} ({profile['register']})
+
+LEXICAL & SYNONYM LEVEL REQUIREMENT:
+{profile['synonym_rule']}
+Crucial constraint: Keep conversational paragraph lengths and sentence structures natural and normalized (consistent length across all levels), but strictly calibrate the chosen words, synonyms, and lexical register to the {norm_level} standard.
 
 TASK:
-Write an authentic, highly detailed 2-person German conversation situated squarely within this domain. Avoid clichéd beginner language textbook tropes. Instead, capture the exact texture of real human conversation in this world — specific jargon, natural colloquial cadence, conflicting viewpoints, unsaid subtext, and genuine emotional or intellectual weight.
+Write an authentic, immersive 2-person German conversation between 2 characters with differing perspectives within this domain.
 
 REQUIREMENTS:
-1. THEME: Write a 1-sentence description of the specific scenario, the two characters, and what is at stake.
-2. CONVERSATION: A substantive back-and-forth dialogue between the 2 characters (at least 8 distinct conversational turns).
+1. THEME: 1-sentence description of the specific scenario and what is at stake.
+2. CONVERSATION: A substantive back-and-forth dialogue between the 2 characters (8 distinct conversational turns).
    - Naturally weave the target word '{german}' (or its correct conjugated/inflected German forms) into the dialogue across multiple turns (at least 3 times).
-   - Each turn should be a natural, rich conversational paragraph, not just one brief sentence.
+   - Calibrate all surrounding nouns, verbs, and descriptive adjectives to the {norm_level} synonym tier while maintaining normalized sentence length.
 3. TRANSLATION: A complete, faithful English translation of the entire dialogue with the exact same speaker names.
 
 FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
@@ -139,7 +198,7 @@ Do not output any introductory or concluding meta-commentary."""
     return prompt, selected_domain
 
 
-def parse_scenario_response(text: str, domain: str) -> ScenarioDialogue:
+def parse_scenario_response(text: str, domain: str, level: str) -> ScenarioDialogue:
     """Parse the raw LLM output into theme, German dialogue paragraphs, and English translations."""
     theme = f"Real-World Context ({domain})"
     german_paragraphs: list[tuple[str, str]] = []
@@ -186,6 +245,7 @@ def parse_scenario_response(text: str, domain: str) -> ScenarioDialogue:
     return ScenarioDialogue(
         domain=domain,
         theme=theme,
+        level=level,
         german_paragraphs=german_paragraphs,
         english_paragraphs=english_paragraphs,
     )
@@ -195,11 +255,12 @@ def generate_scenario(
     german: str,
     english: str,
     pos: str,
+    level: str = "B1",
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_OLLAMA_URL,
 ) -> ScenarioDialogue:
-    """Call Ollama local LLM to synthesize a full-spectrum dialogue scenario."""
-    prompt, domain = build_scenario_prompt(german, english, pos)
+    """Call Ollama local LLM to synthesize a full-spectrum dialogue scenario calibrated to a CEFR synonym level."""
+    prompt, domain = build_scenario_prompt(german, english, pos, level=level)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -218,7 +279,7 @@ def generate_scenario(
             response.raise_for_status()
             data = response.json()
             raw_response = data.get("response", "")
-            parsed = parse_scenario_response(raw_response, domain)
+            parsed = parse_scenario_response(raw_response, domain, level)
             if not parsed.german_paragraphs:
                 raise OllamaError("Failed to parse scenario dialogue from LLM response. Please try again.")
             return parsed
