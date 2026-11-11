@@ -49,8 +49,8 @@ def parse_llm_response(text: str) -> list[tuple[str, str]]:
 
     for line in lines:
         # Check if line starts with EN: translation prefix
-        if line.startswith("EN:") or line.startswith("EN :") or line.startswith("en:"):
-            en_text = re.sub(r"^(?i)en\s*:\s*", "", line).strip()
+        if line.lower().startswith("en:") or line.lower().startswith("en :"):
+            en_text = re.sub(r"^en\s*:\s*", "", line, flags=re.IGNORECASE).strip()
             if current_german:
                 results.append((current_german, en_text))
                 current_german = None
