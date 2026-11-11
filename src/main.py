@@ -111,19 +111,45 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL, level: str
             # Save progress incrementally
             save_vocab(all_vocab)
 
-            # Navigation prompt
-            if idx < sample_size:
+            # Interactive navigation loop with instant level switching
+            level_map = {"1": "A1", "2": "B1", "3": "B2", "4": "C1"}
+            current_level = level
+
+            while True:
                 display_navigation_prompt()
                 try:
                     choice = input().strip().lower()
-                    if choice == "q":
-                        display_info("Session ended early by user.")
-                        break
                 except (KeyboardInterrupt, EOFError):
                     console.print()
-                    display_info("Session interrupted.")
+                    choice = "q"
+
+                if choice == "q":
+                    display_info("Session ended early by user.")
+                    return
+                elif choice in level_map:
+                    target_lvl = level_map[choice]
+                    display_info(f"Adapting '{german}' scenario to [{target_lvl}] level synonyms...")
+                    with console.status(f"[bold cyan]Regenerating dialogue with {target_lvl} synonyms...[/bold cyan]"):
+                        try:
+                            scenario = generate_scenario(
+                                german,
+                                english,
+                                pos,
+                                level=target_lvl,
+                                fixed_domain=scenario.domain,
+                                fixed_theme=scenario.theme,
+                                model=model,
+                            )
+                        except OllamaError as err:
+                            display_error(str(err))
+                            break
+                    display_word_header(german, english)
+                    display_scenario_dialogue(scenario, german)
+                else:
+                    # Enter or any other key advances to next word
                     break
-            else:
+
+            if idx == sample_size:
                 display_info("All words in this session completed!")
 
     finally:

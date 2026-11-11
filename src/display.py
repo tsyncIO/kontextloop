@@ -1,4 +1,4 @@
-"""Rich terminal display rendering for KontextLoop with full-spectrum dialogues."""
+"""Rich terminal display rendering for KontextLoop with target-word and synonym highlighting."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 console = Console()
 
-# Speaker color palette to give characters distinct, visually striking voices
+# Speaker color palette
 SPEAKER_COLORS = ["cyan", "bright_green", "magenta", "yellow", "blue"]
 
 
@@ -33,26 +33,27 @@ def get_core_word(german: str) -> str:
     return cleaned
 
 
-def highlight_target_word(text: str, target: str) -> str:
-    """Highlight all occurrences and stem-related inflections of the target word in bold yellow."""
-    core_word = get_core_word(target)
-    if not core_word:
-        return escape(text)
-
-    # If it's a verb ending in 'en' (e.g. behalten -> behalt), also match inflected forms
-    stem = core_word
-    if len(core_word) > 4 and core_word.lower().endswith("en"):
-        stem = core_word[:-2]
-
-    # Pattern matches core word or stem + common German inflections (e, st, t, en, te, test, tet, ten)
-    pattern = re.compile(
-        rf"\b({re.escape(stem)}(?:[a-zäöüß]{{0,4}})?)\b",
-        flags=re.IGNORECASE,
-    )
-
+def highlight_word_and_synonyms(text: str, target: str, synonyms: list[str]) -> str:
+    """Highlight target word in bold yellow and its level synonyms in bold cyan."""
     escaped_text = escape(text)
-    highlighted = pattern.sub(r"[bold yellow]\1[/bold yellow]", escaped_text)
-    return highlighted
+
+    # 1. Highlight level-adapted synonyms in bold cyan
+    for syn in synonyms:
+        core_syn = get_core_word(syn)
+        if len(core_syn) > 2:
+            stem = core_syn[:-2] if len(core_syn) > 4 and core_syn.lower().endswith("en") else core_syn
+            syn_pattern = re.compile(rf"\b({re.escape(stem)}(?:[a-zäöüß]{{0,4}})?)\b", flags=re.IGNORECASE)
+            escaped_text = syn_pattern.sub(r"[bold cyan]\1[/bold cyan]", escaped_text)
+
+    # 2. Highlight target word in bold yellow (takes precedence)
+    core_word = get_core_word(target)
+    if core_word:
+        stem = core_word[:-2] if len(core_word) > 4 and core_word.lower().endswith("en") else core_word
+        target_pattern = re.compile(rf"\b({re.escape(stem)}(?:[a-zäöüß]{{0,4}})?)\b", flags=re.IGNORECASE)
+        # Avoid replacing tags themselves
+        escaped_text = target_pattern.sub(r"[bold yellow]\1[/bold yellow]", escaped_text)
+
+    return escaped_text
 
 
 def display_word_header(german: str, english: str) -> None:
@@ -75,17 +76,21 @@ def display_word_header(german: str, english: str) -> None:
 
 
 def display_scenario_dialogue(scenario: ScenarioDialogue, target_word: str) -> None:
-    """Display the full-spectrum scenario dialogue with CEFR badge, highlighted word and English translation."""
-    # 1. Thematic Scenario Banner
+    """Display the full-spectrum scenario dialogue with CEFR badge, synonym cluster, highlighted dialogue, and English translation."""
+    # 1. Thematic Scenario & Synonym Banner
     scenario_info = Text()
     scenario_info.append("Domain: ", style="bold magenta")
-    scenario_info.append(f"{scenario.domain}  ", style="white")
-    
-    # CEFR Level badge styling
+    scenario_info.append(f"{scenario.domain}   ", style="white")
+
     level_colors = {"A1": "green", "A2": "green", "B1": "yellow", "B2": "bright_yellow", "C1": "cyan", "C2": "bold magenta"}
     lvl_color = level_colors.get(scenario.level.upper(), "yellow")
-    scenario_info.append(f"[{scenario.level.upper()}]\n", style=f"bold {lvl_color}")
-    
+    scenario_info.append(f"CEFR Level: [{scenario.level.upper()}]\n", style=f"bold {lvl_color}")
+
+    # Active level-calibrated synonyms
+    if scenario.synonyms:
+        scenario_info.append(f"Level {scenario.level.upper()} Synonyms: ", style="bold cyan")
+        scenario_info.append(" • ".join(scenario.synonyms) + "\n", style="bold white")
+
     scenario_info.append("Scenario: ", style="bold cyan")
     scenario_info.append(f"{scenario.theme}", style="italic white")
 
@@ -107,11 +112,11 @@ def display_scenario_dialogue(scenario: ScenarioDialogue, target_word: str) -> N
 
     # 2. German Conversation
     console.print(Rule(title="[bold green]German Conversation[/bold green]", style="green"))
-    console.print()
+    console.print("[dim]Legend: [bold yellow]Target Word[/bold yellow]  |  [bold cyan]Level Synonyms[/bold cyan][/dim]\n")
 
     for speaker, paragraph in scenario.german_paragraphs:
         color = speaker_color_map.get(speaker, "cyan")
-        highlighted_p = highlight_target_word(paragraph, target_word)
+        highlighted_p = highlight_word_and_synonyms(paragraph, target_word, scenario.synonyms)
         console.print(f"  [bold {color}]{speaker}:[/bold {color}] {highlighted_p}")
         console.print()
 
@@ -125,8 +130,8 @@ def display_scenario_dialogue(scenario: ScenarioDialogue, target_word: str) -> N
 
 
 def display_navigation_prompt() -> None:
-    """Display the session navigation prompt."""
-    console.print("  [dim][Enter][/dim] next word   [dim][q][/dim] quit: ", end="")
+    """Display the interactive navigation prompt with level adaptation options."""
+    console.print("  [dim][Enter][/dim] next word  [dim][1][/dim] A1  [dim][2][/dim] B1  [dim][3][/dim] B2  [dim][4][/dim] C1  [dim][q][/dim] quit: ", end="")
 
 
 def display_session_summary(words_seen: int, elapsed_seconds: float) -> None:
