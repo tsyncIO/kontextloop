@@ -3,7 +3,7 @@
 > A context-driven synthesis engine and terminal runtime for accelerated immersive learning.
 
 <p align="center">
-  <img src="assets/demo.gif" alt="KontextLoop Demo" width="600" />
+  <img src="assets/demo.gif" alt="KontextLoop Demo" width="490" />
 </p>
 
 KontextLoop (`kloop`) is an offline Python terminal application designed for contextual German language acquisition. Instead of dry flashcards or generic textbook exercises, KontextLoop pairs a local LLM runtime (via Ollama) with a Rich terminal interface to immerse learners in **substantive, full-spectrum 2-person dialogues** across diverse real-world domains with **interactive CEFR level switching and target-word synonym progression**.
