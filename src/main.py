@@ -20,7 +20,7 @@ from src.display import (
     display_word_header,
 )
 from src.ingestion import parse_vocab_file
-from src.llm import DEFAULT_MODEL, OllamaError, generate_sentences
+from src.llm import DEFAULT_MODEL, OllamaError, generate_sentences, unload_model
 from src.storage import add_vocab_entries, load_vocab, reset_vocab, save_vocab
 
 
@@ -119,6 +119,8 @@ def handle_session(words_count: int = 10, model: str = DEFAULT_MODEL) -> None:
                 display_info("All words in this session completed!")
 
     finally:
+        # Immediately unload model from memory to free RAM
+        unload_model(model=model)
         elapsed = time.time() - start_time
         if words_seen > 0:
             display_session_summary(words_seen, elapsed)

@@ -118,3 +118,18 @@ def generate_sentences(
         raise
     except Exception as e:
         raise OllamaError(f"Unexpected error communicating with Ollama: {e}")
+
+
+def unload_model(model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL) -> None:
+    """Instruct Ollama to immediately unload the model from memory upon session end."""
+    payload = {
+        "model": model,
+        "keep_alive": 0,
+    }
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            client.post(base_url, json=payload)
+    except Exception:
+        # Ignore errors during cleanup so session exit remains smooth
+        pass
+
