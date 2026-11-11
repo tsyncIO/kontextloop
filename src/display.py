@@ -1,19 +1,26 @@
-"""Rich terminal display rendering for KontextLoop."""
+"""Rich terminal display rendering for KontextLoop with full-spectrum dialogues."""
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich import box
 from rich.align import Align
 from rich.console import Console
 from rich.markup import escape
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
+if TYPE_CHECKING:
+    from src.llm import ScenarioDialogue
+
 console = Console()
+
+# Speaker color palette to give characters distinct, visually striking voices
+SPEAKER_COLORS = ["cyan", "bright_green", "magenta", "yellow", "blue"]
 
 
 def get_core_word(german: str) -> str:
@@ -26,29 +33,30 @@ def get_core_word(german: str) -> str:
     return cleaned
 
 
-def highlight_target_word(sentence: str, target: str) -> str:
-    """Highlight all occurrences of target word in the sentence with bold yellow using Rich markup.
-    
-    Case-insensitive matching that preserves original casing in the sentence.
-    """
+def highlight_target_word(text: str, target: str) -> str:
+    """Highlight all occurrences and stem-related inflections of the target word in bold yellow."""
     core_word = get_core_word(target)
     if not core_word:
-        return escape(sentence)
+        return escape(text)
 
-    # Escape the core word for regex
-    pattern = re.compile(rf"\b({re.escape(core_word)})\b", flags=re.IGNORECASE)
+    # If it's a verb ending in 'en' (e.g. behalten -> behalt), also match inflected forms
+    stem = core_word
+    if len(core_word) > 4 and core_word.lower().endswith("en"):
+        stem = core_word[:-2]
 
-    # First escape any potential rich tags in the raw sentence
-    escaped_sentence = escape(sentence)
-    
-    # Replace matched occurrences with bold yellow markup
-    highlighted = pattern.sub(r"[bold yellow]\1[/bold yellow]", escaped_sentence)
+    # Pattern matches core word or stem + common German inflections (e, st, t, en, te, test, tet, ten)
+    pattern = re.compile(
+        rf"\b({re.escape(stem)}(?:[a-zäöüß]{{0,4}})?)\b",
+        flags=re.IGNORECASE,
+    )
+
+    escaped_text = escape(text)
+    highlighted = pattern.sub(r"[bold yellow]\1[/bold yellow]", escaped_text)
     return highlighted
 
 
 def display_word_header(german: str, english: str) -> None:
     """Render the word header panel with rounded border, large bold cyan word, and dim italic translation."""
-    # Format word with slight spacing for aesthetic title presentation
     spaced_word = " ".join(german)
     content = Text()
     content.append(f"{spaced_word}\n", style="bold cyan")
@@ -66,13 +74,48 @@ def display_word_header(german: str, english: str) -> None:
     console.print()
 
 
-def display_sentences(sentences: list[tuple[str, str]], target_word: str) -> None:
-    """Display German sentences with highlighted target word and dim English translation below."""
-    for idx, (de_sentence, en_sentence) in enumerate(sentences, start=1):
-        highlighted_de = highlight_target_word(de_sentence, target_word)
-        console.print(f"  [bold white]{idx}.[/bold white] {highlighted_de}")
-        console.print(f"        [dim]{escape(en_sentence)}[/dim]")
+def display_scenario_dialogue(scenario: ScenarioDialogue, target_word: str) -> None:
+    """Display the full-spectrum documentary scenario dialogue with highlighted word and English translation."""
+    # 1. Thematic Scenario Banner
+    scenario_info = Text()
+    scenario_info.append("Domain: ", style="bold magenta")
+    scenario_info.append(f"{scenario.domain}\n", style="white")
+    scenario_info.append("Scenario: ", style="bold cyan")
+    scenario_info.append(f"{scenario.theme}", style="italic white")
+
+    banner = Panel(
+        scenario_info,
+        box=box.ROUNDED,
+        border_style="magenta",
+        padding=(0, 2),
+        expand=True,
+    )
+    console.print(banner)
+    console.print()
+
+    # Dynamic speaker color mapping
+    speakers = list(dict.fromkeys(spk for spk, _ in scenario.german_paragraphs))
+    speaker_color_map = {
+        spk: SPEAKER_COLORS[i % len(SPEAKER_COLORS)] for i, spk in enumerate(speakers)
+    }
+
+    # 2. German Conversation
+    console.print(Rule(title="[bold green]German Conversation[/bold green]", style="green"))
+    console.print()
+
+    for speaker, paragraph in scenario.german_paragraphs:
+        color = speaker_color_map.get(speaker, "cyan")
+        highlighted_p = highlight_target_word(paragraph, target_word)
+        console.print(f"  [bold {color}]{speaker}:[/bold {color}] {highlighted_p}")
         console.print()
+
+    # 3. English Translation
+    if scenario.english_paragraphs:
+        console.print(Rule(title="[dim]English Translation[/dim]", style="dim"))
+        console.print()
+        for speaker, paragraph in scenario.english_paragraphs:
+            console.print(f"  [dim][bold]{speaker}:[/bold] {escape(paragraph)}[/dim]")
+            console.print()
 
 
 def display_navigation_prompt() -> None:
